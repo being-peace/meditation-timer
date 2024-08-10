@@ -126,6 +126,8 @@
         <h1>Meditation Timer</h1>
         <label for="durationSlider">Select Duration: <span id="selectedTime">5</span> min</label>
         <input type="range" min="1" max="60" value="5" class="slider" id="durationSlider">
+        <label for="intervalSlider">Number of Interval Bells: <span id="selectedIntervals">0</span></label>
+        <input type="range" min="0" max="6" value="0" class="slider" id="intervalSlider">
 
         <label>
             Bell at the beginning
@@ -152,7 +154,7 @@
     </div>
 
     <div class="container hidden" id="timerDisplay">
-		<h1>Meditation Timer</h1>
+        <h1>Meditation Timer</h1>
         <h4>... meditate with a flashing neon sign that says: "ENJOY." 😊</h4>
 
         <div id="timer">00:00</div>
@@ -170,9 +172,24 @@
         let interval;
         let preparationTime = 5;
         let isPaused = false;
+        let intervalCount = 0;
+        let intervalDuration = 0;
 
-        document.getElementById('durationSlider').value = duration;
-        document.getElementById('selectedTime').innerText = duration;
+        document.getElementById('intervalSlider').addEventListener('input', function () {
+            setIntervalCount(parseInt(this.value));
+        });
+
+        setIntervalCount(parseInt(document.getElementById('intervalSlider').value));
+
+        function setIntervalCount(count) {
+            intervalCount = count;
+            document.getElementById('selectedIntervals').innerText = intervalCount;
+            if (intervalCount > 0) {
+                intervalDuration = Math.round((duration * 60) / (intervalCount + 1));
+            }
+        }
+
+        setDuration(duration);
 
         function setDuration(mins) {
             duration = mins;
@@ -224,9 +241,10 @@
 
         function startMeditation() {
             if (document.getElementById('startBell').checked) {
+                document.getElementById('startSound').currentTime=0;
                 document.getElementById('startSound').play();
             }
-			resetTimer(false);
+            resetTimer(false);
         }
 
         function updateTimer(seconds) {
@@ -255,6 +273,7 @@
             clearInterval(interval);
             timeRemaining = duration * 60;
             isPaused = false;
+            let intervalsPlayed = 0;
             updateTimer(timeRemaining);
 
             if (goToSettings) {
@@ -268,6 +287,15 @@
                 interval = setInterval(() => {
                     if (!isPaused) {
                         timeRemaining--;
+
+                        // Play interval bell
+                        if (intervalCount > 0 && timeRemaining % intervalDuration === 0 && intervalsPlayed < intervalCount) {
+                            document.getElementById('startSound').currentTime=0;
+                            document.getElementById('startSound').play(); // Use the same sound or a different one if you like
+                            intervalsPlayed++;
+                        }
+
+
                         if (timeRemaining <= 0) {
                             clearInterval(interval);
                             endMeditation();
@@ -281,9 +309,11 @@
 
         function endMeditation() {
             if (document.getElementById('endBell').checked) {
+                document.getElementById('endSound').currentTime=0;
                 document.getElementById('endSound').play();
             } else {
-                document.getElementById('startSound').play(); // Use start sound as end sound if three bells are off
+              document.getElementById('startSound').currentTime=0;
+              document.getElementById('startSound').play(); // Use start sound as end sound if three bells are off
             }
             document.getElementById('timerDisplay').classList.add('hidden');
             document.getElementById('settings').classList.remove('hidden');
