@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meditation Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4c3;
+            color: #4b5320;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        .slider {
+            width: 100%;
+        }
+        .buttons {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #81c784;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #66bb6a;
+        }
+        #timer {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            color: #2e7d32;
+        }
+        label {
+            display: block;
+            margin: 10px 0;
+            text-align: left;
+        }
+        /* Style for the toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-switch {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .slider-switch:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-switch {
+            background-color: #66bb6a;
+        }
+
+        input:checked + .slider-switch:before {
+            transform: translateX(26px);
+        }
+
+        /* Optional: add "On" and "Off" labels */
+        .slider-switch:after {
+            content: 'Off';
+            color: white;
+            display: block;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 70%;
+            font-size: 10px;
+        }
+
+        input:checked + .slider-switch:after {
+            content: 'On';
+            left: 30%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="settings">
+        <h1>Meditation Timer</h1>
+        <label for="durationSlider">Select Duration: <span id="selectedTime">5</span> min</label>
+        <input type="range" min="1" max="60" value="5" class="slider" id="durationSlider">
+
+        <label>
+            Bell at the beginning
+            <label class="switch">
+                <input type="checkbox" id="startBell" checked>
+                <span class="slider-switch"></span>
+            </label>
+        </label>
+
+        <label>
+            Three bells at the end
+            <label class="switch">
+                <input type="checkbox" id="endBell" checked>
+                <span class="slider-switch"></span>
+            </label>
+        </label>
+
+        <div class="buttons">
+            <button onclick="setDuration(1)">1 min</button>
+            <button onclick="setDuration(3)">3 min</button>
+            <button onclick="setDuration(15)">15 min</button>
+        </div>
+        <button id="startButton" onclick="startTimer()">Start</button>
+    </div>
+
+    <div class="container hidden" id="timerDisplay">
+		<h1>Meditation Timer</h1>
+        <h4>... meditate with a flashing neon sign that says: "ENJOY." 😊</h4>
+
+        <div id="timer">00:00</div>
+        <button onclick="pauseTimer()">Pause</button>
+        <button onclick="abortTimer()">Abort</button>
+        <button onclick="resetTimer()">Reset</button> <!-- Reset Button -->
+    </div>
+
+    <audio id="startSound" src="one ring bell.mp3"></audio>
+    <audio id="endSound" src="three ring bell.mp3"></audio>
+
+    <script>
+        let duration = parseInt(getParameterByName('duration')) || 5;
+        let timeRemaining = duration * 60;
+        let interval;
+        let preparationTime = 5;
+        let isPaused = false;
+
+        document.getElementById('durationSlider').value = duration;
+        document.getElementById('selectedTime').innerText = duration;
+
+        function setDuration(mins) {
+            duration = mins;
+            timeRemaining = duration * 60;
+            document.getElementById('durationSlider').value = duration;
+            document.getElementById('selectedTime').innerText = duration;
+            updateURL();
+        }
+
+        document.getElementById('durationSlider').addEventListener('input', function () {
+            setDuration(parseInt(this.value));
+        });
+
+        function updateURL() {
+            const url = new URL(window.location);
+            url.searchParams.set('duration', duration);
+            window.history.replaceState({}, '', url);
+        }
+
+        function getParameterByName(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function startTimer() {
+            const startBellEnabled = document.getElementById('startBell').checked;
+            document.getElementById('settings').classList.add('hidden');
+            document.getElementById('timerDisplay').classList.remove('hidden');
+            if (startBellEnabled) {
+                startPreparation();
+            } else {
+                startMeditation();
+            }
+        }
+
+        function startPreparation() {
+            preparationTime = 5;
+            updateTimer(preparationTime);
+            interval = setInterval(() => {
+                preparationTime--;
+                if (preparationTime <= 0) {
+                    clearInterval(interval);
+                    startMeditation();
+                } else {
+                    updateTimer(preparationTime);
+                }
+            }, 1000);
+        }
+
+        function startMeditation() {
+            if (document.getElementById('startBell').checked) {
+                document.getElementById('startSound').play();
+            }
+			resetTimer(false);
+        }
+
+        function updateTimer(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function pauseTimer() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                document.querySelector('[onclick="pauseTimer()"]').innerText = "Resume";
+            } else {
+                document.querySelector('[onclick="pauseTimer()"]').innerText = "Pause";
+            }
+        }
+
+        function abortTimer() {
+            clearInterval(interval);
+            document.getElementById('startSound').pause();
+            document.getElementById('endSound').pause();
+            resetTimer(true);
+        }
+
+        function resetTimer(goToSettings = false) {
+            clearInterval(interval);
+            timeRemaining = duration * 60;
+            isPaused = false;
+            updateTimer(timeRemaining);
+
+            if (goToSettings) {
+                document.getElementById('timerDisplay').classList.add('hidden');
+                document.getElementById('settings').classList.remove('hidden');
+            }
+
+            document.querySelector('[onclick="pauseTimer()"]').innerText = "Pause";
+            // Restart the timer if not going back to settings
+            if (!goToSettings) {
+                interval = setInterval(() => {
+                    if (!isPaused) {
+                        timeRemaining--;
+                        if (timeRemaining <= 0) {
+                            clearInterval(interval);
+                            endMeditation();
+                        } else {
+                            updateTimer(timeRemaining);
+                        }
+                    }
+                }, 1000);
+            }
+        }
+
+        function endMeditation() {
+            if (document.getElementById('endBell').checked) {
+                document.getElementById('endSound').play();
+            } else {
+                document.getElementById('startSound').play(); // Use start sound as end sound if three bells are off
+            }
+            document.getElementById('timerDisplay').classList.add('hidden');
+            document.getElementById('settings').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
